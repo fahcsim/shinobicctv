@@ -1,0 +1,6 @@
+DB_USER=<db username>
+DB_PASSWORD=<db user password>
+DB_HOST=mysql # this is using the docker container's DNS name, change to the host IP if you are exposing its MySQL port
+DB_DATABASE=<your database name>
+DB_DISABLE_INCLUDED=true
+SSL_ENABLED=false
