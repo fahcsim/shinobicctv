@@ -1,0 +1,3 @@
+user: <username>
+
+# replace <username> with a user that has root privileges on the destination server

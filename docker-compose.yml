@@ -1,0 +1,44 @@
+version: "3"
+services:
+    shinobi:
+        image: shinobisystems/shinobi:latest
+        container_name: Shinobi
+        env_file: .envShinobi
+        environment:
+           - SSL_ENABLED=false
+             #- MYSQL_ONETIME_PASSWORD: "true"
+           - DB_DATABASE=${MYSQL_DATABASE}
+           - DB_USER=${MYSQL_USER}
+           - DB_PASSWORD=${MYSQL_PASSWORD}
+           - DB_DISABLE_INCLUDED=true
+           - DB_HOST=mysql
+        volumes:
+           - /root/Shinobi/config:/config
+           - /root/Shinobi/customAutoLoad:/home/Shinobi/libs/customAutoLoad
+           - /root/Shinobi/database:/var/lib/mysql
+           - /root/Shinobi/videos:/root/Shinobi/videos
+           - /root/Shinobi/videos2:/root/Shinobi/videos2
+           - /root/Shinobi/plugins:/root/Shinobi/plugins
+           - /dev/shm/Shinobi/streams:/dev/shm/streams
+           - /etc/localtime:/etc/localtime:ro
+        ports:
+           - 8080:8080
+        restart: always
+    proxy:
+        image: nginx
+        container_name: Nginx
+        restart: always
+        volumes:
+           - ./nginx/config/nginx.conf:/etc/nginx/nginx.conf
+           - ./nginx/logs:/var/log/nginx/
+           - ./nginx/config/conf.d:/etc/nginx/conf.d
+        ports:
+          - 80:80
+          - 443:443
+    mysql:
+      image: mysql:5.7.26
+      restart: always
+      volumes:
+        - ./mysql:/var/lib/mysql
+        - /srv/shinobi/db/:/docker-entrypoint-initdb.d
+      env_file: .envMysql

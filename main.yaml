@@ -1,0 +1,167 @@
+
+- hosts: all
+  gather_facts: no
+  vars_files:
+    - ./vars.yaml
+  remote_user: "{{user}}"
+  vars_prompt:
+    - name: "ansible_sudo_pass"
+      prompt: "Sudo password"
+      private: yes  
+  tasks:
+
+  - name: Update repo cache and install docker package
+    apt:
+      name: docker
+      update_cache: yes
+    become: yes
+
+  - name: Update repo cache and install docker-compose package
+    apt:
+      name: docker-compose
+      update_cache: yes
+    become: yes
+
+
+  - name: Create a directory for shinobi DB import if it does not exist
+    ansible.builtin.file:
+      path: /srv/shinobi/db
+      state: directory
+      mode: '0755'
+
+  - name: Create a directory for shinobi ejs files if it does not exist
+    ansible.builtin.file:
+      path: /srv/shinobi/ejs
+      state: directory
+      mode: '0755'
+
+  - name: Copy database dump file
+    ansible.builtin.copy:
+      src: ./db.sql
+      dest: /srv/shinobi/db/db.sql
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Copy help.ejs file
+    ansible.builtin.copy:
+      src: ./help.ejs
+      dest: /srv/shinobi/ejs/help.ejs
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Copy .env file
+    ansible.builtin.copy:
+      src: ./.envShinobi
+      dest: /srv/shinobi/.envShinobi
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Install ShinobiCCTV Container
+    docker_container:
+      name: shinobi
+      image: migoller/shinobidocker
+      state: started
+      pull: true
+      restart_policy: always
+      volumes:
+        - /root/Shinobi/config:/config
+        - /root/Shinobi/customAutoLoad:/home/Shinobi/libs/customAutoLoad
+        - /root/Shinobi/database:/var/lib/mysql
+        - /root/Shinobi/videos:/home/Shinobi/videos
+        - /root/Shinobi/videos2:/home/Shinobi/videos2
+        - /root/Shinobi/plugins:/home/Shinobi/plugins
+        - /dev/shm/Shinobi/streams:/dev/shm/streams
+        - /etc/localtime:/etc/localtime:ro
+        - /srv/shinobi/ejs/help.ejs:/home/Shinobi/web/pages/blocks/help.ejs
+      ports:
+      - "8080:8080"
+      env_file: /srv/shinobi/.envShinobi
+
+  - name: Create a directory if it does not exist
+    ansible.builtin.file:
+      path: /srv/mariadb
+      state: directory
+      mode: '0755'
+
+  - name: Copy .env file for mariadb
+    ansible.builtin.copy:
+      src: ./.envMariaDB
+      dest: /srv/mariadb/.envMariaDB
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Install MariaDB Container
+    docker_container:
+      name: mariadb
+      image: mariadb:latest
+      state: started
+      pull: true
+      volumes:
+        - /srv/mariadb/:/var/lib/mysql
+        - /srv/shinobi/db/:/docker-entrypoint-initdb.d
+      ports:
+      - "3306:3306"
+      env_file: /srv/mariadb/.envMariaDB
+      restart_policy: always
+
+  - name: Create nginx directory if it does not exist
+    ansible.builtin.file:
+      path: /srv/nginx
+      state: directory
+      mode: '0755'
+
+  - name: Creating nginx config file
+    copy:
+      dest: /srv/nginx/nginx.conf
+      content: |
+        user  nginx;
+        worker_processes  1;
+
+        error_log  /var/log/nginx/error.log warn;
+        pid        /var/run/nginx.pid;
+
+
+        events {
+            worker_connections  1024;
+        }
+
+
+        http {
+            include       /etc/nginx/mime.types;
+            default_type  application/octet-stream;
+
+            log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                              '$status $body_bytes_sent "$http_referer" '
+                              '"$http_user_agent" "$http_x_forwarded_for"';
+
+            access_log  /var/log/nginx/access.log  main;
+
+            sendfile        on;
+            #tcp_nopush     on;
+
+            keepalive_timeout  65;
+
+            #gzip  on;
+
+            include /etc/nginx/conf.d/*.conf;
+         }
+
+    become: yes
+
+  - name: Install Nginx Proxy Container
+    docker_container:
+      name: Nginx
+      image: nginx
+      state: started
+      pull: true
+      volumes:
+        - /srv/nginx/nginx.conf:/etc/nginx/nginx.conf
+        - /srv/nginx/logs:/var/log/nginx/
+        - /srv/nginx/conf.d:/etc/nginx/conf.d
+      ports:
+      - "80:80"
+      - "443:443"

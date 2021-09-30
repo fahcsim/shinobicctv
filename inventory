@@ -1,0 +1,6 @@
+[cctv:vars]
+ansible_user=<destinaton machine user>
+ansible_become=yes
+ansible_ssh_private_key_file=<path to ssh key>>
+[cctv]
+<destination hostname or IP>
