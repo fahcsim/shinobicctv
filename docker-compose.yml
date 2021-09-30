@@ -4,14 +4,6 @@ services:
         image: shinobisystems/shinobi:latest
         container_name: Shinobi
         env_file: .envShinobi
-        environment:
-           - SSL_ENABLED=false
-             #- MYSQL_ONETIME_PASSWORD: "true"
-           - DB_DATABASE=${MYSQL_DATABASE}
-           - DB_USER=${MYSQL_USER}
-           - DB_PASSWORD=${MYSQL_PASSWORD}
-           - DB_DISABLE_INCLUDED=true
-           - DB_HOST=mysql
         volumes:
            - /root/Shinobi/config:/config
            - /root/Shinobi/customAutoLoad:/home/Shinobi/libs/customAutoLoad
